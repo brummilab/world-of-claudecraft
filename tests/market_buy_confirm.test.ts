@@ -227,6 +227,15 @@ describe('market_buy_confirm_core', () => {
     expect(stack.price - captured.buyPrice).toBeGreaterThanOrEqual(1);
   });
 
+  it('quotes the whole stack when its price is too low to split (the sim does the same)', () => {
+    // 1 copper over 4 units cannot leave both halves at 1 copper or more.
+    const stack = listing({ count: 4, price: 1 });
+    expect(marketBuyConfirm(stack, 1)).toMatchObject({ buyCount: 4, buyPrice: 1 });
+    // 2 copper still splits: 1 copper share, 1 copper remainder.
+    const two = listing({ count: 5, price: 2 });
+    expect(marketBuyConfirm(two, 1)).toMatchObject({ buyCount: 1, buyPrice: 1 });
+  });
+
   it('passes when the captured listing is still live, in both world shapes', () => {
     const captured = marketBuyConfirm(listing());
     const sim = info([listing()]);

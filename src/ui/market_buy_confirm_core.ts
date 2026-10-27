@@ -71,8 +71,13 @@ export function marketBuyConfirm(
   requestedCount?: number,
 ): MarketBuyConfirm {
   const { count, price } = listing;
+  // Mirrors the sim's marketBuy: a stack priced below 2 * MARKET_MIN_PRICE
+  // cannot be split, so any request on it quotes the whole stack.
   const buyCount =
-    requestedCount === undefined || !Number.isFinite(requestedCount) || requestedCount >= count
+    requestedCount === undefined ||
+    !Number.isFinite(requestedCount) ||
+    requestedCount >= count ||
+    price < 2 * MARKET_MIN_PRICE
       ? count
       : Math.max(1, Math.floor(requestedCount));
   const buyPrice =
