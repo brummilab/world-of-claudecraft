@@ -59,9 +59,8 @@ import { regenerateRuinOutOfCombat, tickPyreGuardian } from './destruction';
 import { druidEngineOnBleedTick } from './druid_engines';
 import { naturesBoonOnHotTick } from './druid_natures_boon';
 import { secondBloomOnHotExpired } from './druid_second_bloom';
-import { sporemenderHealingDoneMult } from './druid_sporemender';
 import { applyGreaterInvisibilityAftereffect } from './greater_invisibility';
-import { consumeHealAbsorb } from './heal';
+import { consumeHealAbsorb, hotSourceHealingDoneMult } from './heal';
 import { isColdsightInternalMarkerAuraId } from './hunter_coldsight_read';
 import { hunterFocusRegenMult } from './hunter_fieldcraft';
 import {
@@ -471,10 +470,12 @@ export function updateAuras(ctx: SimContext, e: Entity): void {
           }
         } else if (a.kind === 'hot' && !tickMendingCurrent(ctx, e, a)) {
           const healer = ctx.entities.get(a.sourceId);
-          // Sporemender Form scales its wearer's HoT ticks live (exactly 1 for
-          // every other healer, so their tick arithmetic is unchanged).
+          // The healer's healing-done multipliers (Sporemender Form, healing
+          // buffs, Weakening Hex) scale its HoT ticks live, exactly as they
+          // scale a direct heal in applyHeal (exactly 1 for an unbuffed healer,
+          // so their tick arithmetic is unchanged).
           const intended = Math.round(
-            a.value * sporemenderHealingDoneMult(healer) * ctx.healingTakenMult(e),
+            a.value * hotSourceHealingDoneMult(ctx, healer) * ctx.healingTakenMult(e),
           );
           const landing = consumeHealAbsorb(ctx, e, intended);
           const absorbed = intended - landing;
