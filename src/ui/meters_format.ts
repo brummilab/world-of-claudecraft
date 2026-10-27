@@ -13,9 +13,12 @@ import { formatNumber, t } from './i18n';
 // suffix itself is a localizable key rather than a literal.
 export function fmtNum(v: number): string {
   const one = { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false };
-  if (v >= 1_000_000)
+  // Thresholds compare the value as it will DISPLAY (rounded to 0.1k / a whole
+  // number), so 999,960 reads "1.0m" rather than "1000.0k".
+  if (Math.round(v / 100) >= 10_000)
     return t('hudChrome.meters.millions', { value: formatNumber(v / 1_000_000, one) });
-  if (v >= 10_000) return t('hudChrome.meters.thousands', { value: formatNumber(v / 1000, one) });
+  if (Math.round(v) >= 10_000)
+    return t('hudChrome.meters.thousands', { value: formatNumber(v / 1000, one) });
   return formatNumber(Math.round(v), { maximumFractionDigits: 0, useGrouping: false });
 }
 
@@ -51,10 +54,13 @@ export function fmtCountRow(count: number, percent?: number): string {
 
 // "Xm Ys" / "Ys" duration; the m/s units come from localizable keys, digits via
 // formatNumber.
+// Rounds to whole seconds once, up front, so 119.6s carries to "2m 0s" instead
+// of printing "1m 60s".
 export function fmtDuration(s: number): string {
-  const m = Math.floor(s / 60);
+  const total = Math.max(0, Math.round(s));
+  const m = Math.floor(total / 60);
   const num = (n: number) => formatNumber(n, { maximumFractionDigits: 0, useGrouping: false });
   return m > 0
-    ? t('hudChrome.meters.minutesSeconds', { m: num(m), s: num(Math.round(s % 60)) })
-    : t('hudChrome.meters.seconds', { s: num(Math.round(s)) });
+    ? t('hudChrome.meters.minutesSeconds', { m: num(m), s: num(total % 60) })
+    : t('hudChrome.meters.seconds', { s: num(total) });
 }
