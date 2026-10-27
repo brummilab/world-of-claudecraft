@@ -1572,8 +1572,11 @@ export function buyItem(
   // the riding delegation and the mount gates (a hostile count denies on
   // every row; a valid one is force-1 there), so `count` here is always a
   // safe integer >= 1.
-  const bulkEligible =
-    bulk && hasCopperPrice && !hasHonorPrice && def.kind !== 'mount' && !def.soulbound;
+  // Faction marks are charged once per purchase (never multiplied, like honor),
+  // so a faction-priced row also stays exactly one on both the count and the
+  // bulk path, as does every vendorCountForced row (honor, mount, soulbound,
+  // unique).
+  const bulkEligible = bulk && hasCopperPrice && !hasFactionPrice && !vendorCountForced(def);
   let qty: number;
   let copperCost: number;
   let honorCost: number;
@@ -1582,7 +1585,7 @@ export function buyItem(
     copperCost = freeVendor ? 0 : copperUnitPrice * qty;
     honorCost = freeVendor ? 0 : honorPrice;
   } else {
-    const appliedCount = vendorCountForced(def) ? 1 : count;
+    const appliedCount = vendorCountForced(def) || hasFactionPrice ? 1 : count;
     const totals = buyPurchaseTotals(
       def,
       freeVendor ? 0 : copperUnitPrice,

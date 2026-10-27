@@ -86,8 +86,9 @@ export function sanitizeBuyCount(count: number | undefined): number | null {
 }
 
 /** True for the Q23 force-1 rows: honor-priced (honor is authored per
- *  purchase and never multiplied), soulbound, mount, and the riding-service
- *  entry. A count on such a row applies as exactly 1, today's single
+ *  purchase and never multiplied), soulbound, unique (the carry-one check
+ *  only sees copies already held, so a count must never mint several), mount,
+ *  and the riding-service entry. A count on such a row applies as exactly 1, today's single
  *  purchase; the UI keeps these rows at 1x semantics for the same reason.
  *  The honor arm mirrors items.ts buyItem's own price read (floored,
  *  non-finite treated as unpriced) so the predicate can never disagree with
@@ -96,7 +97,11 @@ export function vendorCountForced(def: ItemDef): boolean {
   const honor = def.priceHonor;
   const honorPriced = honor !== undefined && Number.isFinite(honor) && Math.floor(honor) > 0;
   return (
-    def.kind === 'mount' || def.teachesRiding === true || def.soulbound === true || honorPriced
+    def.kind === 'mount' ||
+    def.teachesRiding === true ||
+    def.soulbound === true ||
+    def.unique === true ||
+    honorPriced
   );
 }
 

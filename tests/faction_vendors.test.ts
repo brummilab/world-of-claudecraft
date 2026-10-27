@@ -482,6 +482,36 @@ describe('Faction vendor purchase authoritative simulation & UI', () => {
     expect(meta.copper).toBe(100_000);
   });
 
+  it('a count on a marks-priced or unique row buys exactly one, charging the marks once', () => {
+    // The vendor UI hides the count control on these rows, but the wire takes
+    // any count: marks are charged per purchase, so a multiplied count would
+    // grant N copies for one price, and the unique check only sees held copies.
+    const sim = new Sim({ seed: 778, playerClass: 'warrior', autoEquip: false });
+    const meta = sim.meta(sim.playerId);
+    if (!meta) throw new Error('no meta');
+    const qm = [...sim.entities.values()].find(
+      (e) => e.templateId === 'npc_church_order_quartermaster',
+    );
+    if (!qm) throw new Error('no quartermaster');
+    sim.player.pos.x = qm.pos.x;
+    sim.player.pos.z = qm.pos.z;
+    meta.copper = 100_000;
+    meta.factions.church_order = 10_000;
+
+    meta.factionCurrencies.church_order = 250;
+    sim.buyItem(qm.id, 'formula_dawnfire_etching', { count: 5 });
+    expect(sim.countItem('formula_dawnfire_etching')).toBe(1);
+    expect(meta.factionCurrencies.church_order).toBe(200); // one 50-crest purchase
+
+    sim.buyItem(qm.id, 'formula_dawnfire_etching', { bulk: true });
+    expect(sim.countItem('formula_dawnfire_etching')).toBe(2);
+    expect(meta.factionCurrencies.church_order).toBe(150);
+
+    meta.factionCurrencies.church_order = 1_000;
+    sim.buyItem(qm.id, 'dawn_battle_standard', { count: 3 });
+    expect(sim.countItem('dawn_battle_standard')).toBe(1);
+  });
+
   it('sells the Valestrider reins for marks at Champion behind the riding and one-per-account gates', () => {
     const sim = new Sim({ seed: 779, playerClass: 'rogue', autoEquip: false });
     sim.setPlayerLevel(20);
