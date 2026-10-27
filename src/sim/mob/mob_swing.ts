@@ -20,6 +20,7 @@
 // primitives), all of which still resolve on Sim.
 
 import { isDisarmed } from '../combat/cc';
+import { isCritImmuneTank } from '../combat/tank_crit_immunity';
 import { applyThornsReaction } from '../combat/thorns_charge';
 import { MOBS } from '../data';
 import * as deedsMod from '../deeds';
@@ -132,13 +133,14 @@ export function runMobSwingAffixes(
         Math.abs(normAngle(angleTo(mob.pos, pe.pos) - mob.facing)) > RIFT_CLEAVE_HALF_ARC
       )
         continue;
-      let sd = rawDmg * cleave.mult;
+      const splash = splashCritFor(ctx, mob, pe, rawDmg, crit);
+      let sd = splash.basis * cleave.mult;
       sd *= 1 - mobArmorReduction(mob, pe, ctx.effectiveArmor(pe));
       ctx.dealDamage(
         mob,
         pe,
         Math.max(1, Math.round(sd)),
-        crit,
+        splash.crit,
         'physical',
         cleave.name ?? 'Cleave',
         'hit',
@@ -1038,13 +1040,14 @@ export function runMobSwingAffixes(
         // The primary target already ate the base swing: it takes only the
         // burn. Everyone else in the arc takes the cleave hit, then burns.
         if (pe.id !== target.id) {
-          let sd = rawDmg * arc.mult;
+          const splash = splashCritFor(ctx, mob, pe, rawDmg, crit);
+          let sd = splash.basis * arc.mult;
           sd *= 1 - mobArmorReduction(mob, pe, ctx.effectiveArmor(pe));
           ctx.dealDamage(
             mob,
             pe,
             Math.max(1, Math.round(sd)),
-            crit,
+            splash.crit,
             'physical',
             arc.name,
             'hit',
@@ -1055,6 +1058,23 @@ export function runMobSwingAffixes(
       }
     }
   }
+}
+
+// A splash rides the primary swing's roll, so its basis already carries the
+// swing's 2x crit. A crit-immune tank in the splash takes the uncrit half and
+// no crit flag (combat/tank_crit_immunity.ts; the Nythraxis Gravebreaker
+// splash halves the same way). Draws no rng.
+function splashCritFor(
+  ctx: SimContext,
+  mob: Entity,
+  victim: Entity,
+  rawDmg: number,
+  crit: boolean,
+): { basis: number; crit: boolean } {
+  if (crit && isCritImmuneTank(mob, victim, ctx.players.get(victim.id))) {
+    return { basis: rawDmg / 2, crit: false };
+  }
+  return { basis: rawDmg, crit };
 }
 
 // Strip one beneficial enhancement aura from a player victim. Removes the
