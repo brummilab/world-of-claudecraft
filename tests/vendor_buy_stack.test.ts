@@ -86,6 +86,7 @@ describe('vendorCountForced (Q23 force-1 rows)', () => {
     expect(vendorCountForced(item({ teachesRiding: true }))).toBe(true);
     expect(vendorCountForced(item({ soulbound: true }))).toBe(true);
     expect(vendorCountForced(item({ priceHonor: 7 }))).toBe(true);
+    expect(vendorCountForced(item({ unique: true }))).toBe(true);
   });
 
   it('leaves plain copper rows countable, mirroring the buy path price read exactly', () => {

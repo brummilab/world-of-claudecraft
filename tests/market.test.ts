@@ -1590,6 +1590,35 @@ describe('partial buys: taking fewer than the whole stack', () => {
     expect(listing.price).toBe(1); // never dropped to 0
   });
 
+  it('buys a stack priced too low to split whole, never pricing a row at 0 or below', () => {
+    const sim = makeWorld();
+    const seller = sim.addPlayer('warrior', 'Seller');
+    const buyer = sim.addPlayer('mage', 'Buyer');
+    standAtMerchant(sim, seller);
+    standAtMerchant(sim, buyer);
+    sim.addItem('roasted_boar', 5, seller);
+    playerOf(sim, buyer).copper = 100;
+    sim.marketList('roasted_boar', 5, 2, seller); // 2 copper over 5 units
+    const listing = listingBy(sim, (l) => l.sellerKey === marketSellerKey(seller), 'seller stack');
+    const listingId = listing.id;
+
+    sim.marketBuy(listingId, 1, buyer); // splits once: 1 copper share, row keeps 4 @ 1
+    expect(copperOf(sim, buyer)).toBe(99);
+    expect(listing.count).toBe(4);
+    expect(listing.price).toBe(1);
+
+    // The 1-copper row can no longer carry two shares, so another partial
+    // request takes the whole remainder at its listed price instead of
+    // shrinking the row to 0 copper (and then paying the next buyer).
+    sim.events.length = 0;
+    sim.marketBuy(listingId, 1, buyer);
+    expect(errorsSince(sim)).toEqual([]);
+    expect(copperOf(sim, buyer)).toBe(98);
+    expect(sim.countItem('roasted_boar', buyer)).toBe(5);
+    expect(sim.marketListings.some((l) => l.id === listingId)).toBe(false);
+    expect(sim.marketListings.every((l) => l.price >= 1)).toBe(true);
+  });
+
   it("splits a material listing's composition between the buyer and the shrunk row", () => {
     // wolf_fang is a material item id, so its listings carry a materialSources
     // composition (market.ts marketList's material path); a partial buy must

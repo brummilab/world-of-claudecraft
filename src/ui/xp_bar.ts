@@ -35,9 +35,12 @@ export function formatXp(n: number): string {
 
 // Locale-formatted whole percent. The fraction is floored to a whole percent
 // first (matching the classic truncate-don't-round behaviour, byte-identical in
-// en) and then formatted as a percent so the symbol/placement localizes.
-function formatPercent(frac: number): string {
-  return formatNumber(Math.floor(frac * 100) / 100, { style: 'percent', maximumFractionDigits: 0 });
+// en) and then formatted as a percent so the symbol/placement localizes. The
+// floor runs on integer math (into * 100 / span), never on a float fraction,
+// where 116/400 * 100 = 28.999... would drop a whole percent.
+function formatPercent(into: number, span: number): string {
+  const whole = span > 0 ? Math.floor((into * 100) / span) : 0;
+  return formatNumber(whole / 100, { style: 'percent', maximumFractionDigits: 0 });
 }
 
 export function xpBarView(input: XpBarInput): XpBarView {
@@ -53,7 +56,7 @@ export function xpBarView(input: XpBarInput): XpBarView {
     // the bonus to come.
     const restedFrac = rested > 0 && need > 0 ? clamp01((xp + rested) / need) - clamp01(frac) : 0;
     const restedLabel = rested > 0 ? `  ·  ${t('game.xp.rested')} +${formatXp(rested)}` : '';
-    const percentText = formatPercent(frac);
+    const percentText = formatPercent(xp, need);
     return {
       fillFrac: clamp01(frac),
       restedFrac: Math.max(0, restedFrac),
@@ -70,7 +73,7 @@ export function xpBarView(input: XpBarInput): XpBarView {
       fillFrac: 1,
       restedFrac: 0,
       label: `${t('game.xp.maxLevel')}  ·  ${formatXp(lifetimeXp)} ${t('game.xp.totalXp')}`,
-      percentText: formatPercent(1),
+      percentText: formatPercent(1, 1),
       postCap: false,
     };
   }
@@ -78,7 +81,7 @@ export function xpBarView(input: XpBarInput): XpBarView {
   // At/after the cap with overflow on: fill toward the next virtual level.
   const prog = virtualLevelProgress(lifetimeXp);
   const extra = prog.level - MAX_LEVEL;
-  const percentText = formatPercent(prog.into / prog.span);
+  const percentText = formatPercent(prog.into, prog.span);
   // FR-3.3 format: "Lv 20 (+7)  ·  1,284,500 total XP  ·  62% to next"
   const label =
     `${t('game.xp.lv')} ${MAX_LEVEL} (+${extra})  ·  ` +

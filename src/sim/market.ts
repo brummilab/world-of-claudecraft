@@ -880,6 +880,11 @@ export class Market {
   // remaining stack never prices below MARKET_MIN_PRICE. Since an instanced
   // listing (marketListInstance) is always a single copy, `want` can never sit
   // strictly between 1 and its count, so the partial arm never engages one.
+  // A listing priced below 2 * MARKET_MIN_PRICE cannot be split at all (both
+  // halves must carry at least MARKET_MIN_PRICE), so a partial request on one
+  // buys the whole stack at its listed price: without this the cap below lost
+  // to the floor and the remaining row priced at 0, then negative, paying the
+  // next buyer to take it.
   marketBuy(listingId: number, count?: number, pid?: number): void {
     const r = this.ctx.resolve(pid);
     if (!r) return;
@@ -907,8 +912,9 @@ export class Market {
       this.ctx.error(meta.entityId, 'That is your own listing — cancel it to reclaim it.');
       return;
     }
+    const splittable = listing.price >= 2 * MARKET_MIN_PRICE;
     const want =
-      count === undefined || !Number.isFinite(count) || count >= listing.count
+      count === undefined || !Number.isFinite(count) || count >= listing.count || !splittable
         ? listing.count
         : Math.max(1, Math.floor(count));
     const partial = want < listing.count;

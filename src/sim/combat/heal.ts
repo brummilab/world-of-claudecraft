@@ -66,6 +66,23 @@ export function hexOutputMult(ctx: SimContext, source: Entity | null): number {
   return mult < 0 ? 0 : mult;
 }
 
+// The healer-side multiplier a HoT tick applies live, the same source factors
+// applyHeal folds into a direct heal: buff_heal_done, the paladin healing-done
+// auras, Sporemender Form and Weakening Hex. Exactly 1 for an unbuffed healer
+// (and for a HoT whose caster has left the world), so their tick arithmetic is
+// unchanged. Draws no rng.
+export function hotSourceHealingDoneMult(ctx: SimContext, healer: Entity | undefined): number {
+  if (!healer) return 1;
+  let healDone = 0;
+  for (const aura of healer.auras) if (aura.kind === 'buff_heal_done') healDone += aura.value;
+  return (
+    (1 + healDone) *
+    paladinHealingDoneMultiplier(healer) *
+    sporemenderHealingDoneMult(healer) *
+    hexOutputMult(ctx, healer)
+  );
+}
+
 // Consume the victim's Heal-Absorb shields (classic necrotic blight): each such
 // aura holds a remaining budget of healing it devours. Drains `healed` against
 // every active shield, decrementing their stored budget and dropping any that
